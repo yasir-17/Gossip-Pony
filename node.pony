@@ -2,12 +2,12 @@ use "collections"
 use "random"
 use "time"
 
-trait Algorithm:
+trait Algorithm
   fun ref propagate(env: Env, sender: Node, receiver: Node)
   fun ref update_state(incoming_state: State, node: Node): State
   fun ref terminate(node: Node): Bool
 
-class Gossip is Algorithm:
+class Gossip is Algorithm
   let _max_rumors: U64 = 10
 
   fun ref propagate(env: Env, sender: Node, receiver: Node) =>
@@ -19,7 +19,7 @@ class Gossip is Algorithm:
   fun ref terminate(node: Node): Bool =>
     node._curr_rumors >= _max_rumors
 
-class PushSum is Algorithm:
+class PushSum is Algorithm
   fun ref propagate(env: Env, sender: Node, receiver: Node) =>
     let new_s = sender._state._s / 2
     let new_w = sender._state._w / 2
@@ -42,8 +42,9 @@ class PushSum is Algorithm:
       last_three.uniq().size() == 1
     else
       false
+    end
 
-class State:
+class State
   var _s: F64
   var _w: F64
 
@@ -51,7 +52,7 @@ class State:
     _s = s
     _w = w
 
-actor Node:
+actor Node
   let _env: Env
   let _id: U64 
   var _curr_rumors: U64 = 0
@@ -71,19 +72,12 @@ actor Node:
 
     if not algorithm.terminate(this) then
       _state = algorithm.update_state(incoming_state, this)
-      let neighbor = try
-        _neighbors(_rand.int(_neighbors.size().u64()).usize())?
-      else
-        return
-      end
+      let neighbor =_neighbors(_rand.int(_neighbors.size().u64()).usize())?
       algorithm.propagate(env, this, neighbor)
+    end
 
   be send_rumor(env: Env, algorithm: Algorithm) =>
-    let neighbor = try
-      _neighbors(_rand.int(_neighbors.size().u64()).usize())?
-    else
-      return
-    end
+    let neighbor = _neighbors(_rand.int(_neighbors.size().u64()).usize())
     algorithm.propagate(env, this, neighbor)
 
   be add_moving_ratio(ratio: F64) =>
