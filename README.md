@@ -11,7 +11,7 @@ This project implements two popular distributed algorithms, **Gossip** and **Pus
 - **3D Grid**
 - **Imperfect 3D Grid (Imp3D)**
 
-## Features
+## What is Working?
 - Both **Gossip** and **Push-Sum** algorithms are fully implemented for the four specified topologies.
 - The implementation supports dynamic adjustment of the number of nodes in the network.
 - Performance is measured by the time it takes for convergence of messages or sums in different topologies.
