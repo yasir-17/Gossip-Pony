@@ -97,11 +97,9 @@ actor Worker
         if algorithm == "gossip" then
             let rand2 = Rand(Time.nanos().u64())
             let neighbor_index = rand2.int(neighbors.size().u64()).usize()
-            _env.out.print(neighbor_index.string())
             try 
                 neighbors(neighbor_index)?.receive(s, w)
             end
-                // this.receive(s, w)
         end
       end
 
@@ -114,8 +112,8 @@ actor Main
   let _node_count: USize
   var _start_time: U64
   let _workers: Array[Worker tag]
-  var _finished_nodes: Set[USize] = Set[USize]
-  var converged_nodes: USize = 0
+  var converged_nodes: Set[USize] = Set[USize]
+  let threshold: F64 = 0.7
 
   new create(env: Env) =>
     _env = env
@@ -149,15 +147,33 @@ actor Main
     for i in Range[USize](0, _workers.size()) do 
         try _workers(i)?.terminated() end 
     end
-    
+  
+  fun ref restart() =>
+    let unfinished_nodes = Array[USize](_node_count)
+    for i in Range(0, _node_count) do
+      if not converged_nodes.contains(i) then
+        unfinished_nodes.push(i)
+      end
+    end
+
+    if unfinished_nodes.size() > 0 then
+      let rand = Rand(Time.nanos().u64())
+      let random_index = rand.int(unfinished_nodes.size().u64()).usize()
+      try
+        let node_id = unfinished_nodes(random_index)?
+        _workers(node_id)?.start()
+      end
+    end
+
   be node_finished(id: USize) =>
-    converged_nodes = converged_nodes + 1
-    _env.out.print(converged_nodes.string())
-    if converged_nodes == _node_count then
+    converged_nodes.set(id)
+    if converged_nodes.size() > ((threshold * _node_count.f64()).u64().usize()) then
         let end_time = Time.nanos()
         let duration = end_time - _start_time
         _env.out.print("All nodes finished. Total time: " + (duration.f64() / 1e9).string() + " seconds")
         terminate_nodes()
+    else
+      restart()
     end
 
   fun ref start() =>
@@ -225,118 +241,3 @@ actor Main
 
       try _workers(i)?.set_neighbors(consume neighbors) end
     end
-
-
-// actor Main
-//   let _env: Env
-//   let _node_count: USize
-//   var _start_time: U64
-//   let _workers: Array[Worker tag]
-
-//   new create(env: Env) =>
-//     _env = env
-//     let args = env.args
-
-//     _node_count = try args(1)?.usize()? else 0 end
-//     let topology = try args(2)? else "" end
-//     let algorithm = try args(3)? else "" end
-
-//     _workers = Array[Worker tag](_node_count)
-//     for i in Range(0, _node_count) do
-//       _workers.push(Worker(env, i, this, algorithm))
-//     end
-
-//     _start_time = 0
-//     setup_and_start(topology)
-
-//   be setup_and_start(topology: String) =>
-//     match topology
-//     | "line" => setup_line_topology()
-//     | "full" => setup_full_topology()
-//     | "3d" => setup_3d_grid_topology()
-//     | "imp3d" => setup_imperfect_3d_grid_topology()
-//     end
-
-//     // Start the rumor from a random node
-//     _start_time = Time.nanos()
-//     start()
-//     // try
-//     //   let rand = Rand(Time.nanos().u64())
-//     //   _workers(rand.int(_workers.size().u64()).usize())?.start_rumor()
-//     // end
-
-//     be node_finished(id: USize) =>
-//         converged_nodes = converged_nodes + 1
-//         // _env.out.print(converged_nodes.string())
-//         if converged_nodes == _node_count then
-//             let end_time = Time.nanos()
-//             let duration = end_time - _start_time
-//             _env.out.print("All nodes finished. Total time: " + (duration.f64() / 1e9).string() + " seconds")
-//             // terminate_nodes()
-//         end
-
-//     fun ref start() =>
-//         let rand = Rand(Time.nanos().u64())
-//         let node_id = rand.int(_node_count.u64()).usize()
-//         try
-//             _workers(node_id)?.start()
-//         end
-
-//   fun ref setup_line_topology() =>
-//     for i in Range(0, _workers.size()) do
-//       let neighbors = recover iso Array[Worker tag] end
-//       if i > 0 then try neighbors.push(_workers(i-1)?) end end
-//       if i < (_workers.size() - 1) then try neighbors.push(_workers(i+1)?) end end
-//       try _workers(i)?.set_neighbors(consume neighbors) end
-//     end
-
-//   fun ref setup_full_topology() =>
-//     for i in Range(0, _workers.size()) do
-//       let neighbors = recover iso Array[Worker tag] end
-//       for j in Range(0, _workers.size()) do
-//         if i != j then try neighbors.push(_workers(j)?) end end
-//       end
-//       try _workers(i)?.set_neighbors(consume neighbors) end
-//     end
-
-//   fun ref setup_3d_grid_topology() =>
-//     let grid_size = _node_count.f64().cbrt().round().usize()
-//     for i in Range(0, _workers.size()) do
-//       let neighbors = recover iso Array[Worker tag] end
-//       let x = i % grid_size
-//       let y = (i / grid_size) % grid_size
-//       let z = i / (grid_size * grid_size)
-
-//       if x > 0 then try neighbors.push(_workers(i - 1)?) end end
-//       if x < (grid_size - 1) then try neighbors.push(_workers(i + 1)?) end end
-//       if y > 0 then try neighbors.push(_workers(i - grid_size)?) end end
-//       if y < (grid_size - 1) then try neighbors.push(_workers(i + grid_size)?) end end
-//       if z > 0 then try neighbors.push(_workers(i - (grid_size * grid_size))?) end end
-//       if z < (grid_size - 1) then try neighbors.push(_workers(i + (grid_size * grid_size))?) end end
-
-//       try _workers(i)?.set_neighbors(consume neighbors) end
-//     end
-
-//   fun ref setup_imperfect_3d_grid_topology() =>
-//     let grid_size = _node_count.f64().cbrt().round().usize()
-//     let rand = Rand(Time.nanos().u64())
-
-//     for i in Range(0, _workers.size()) do
-//       let neighbors = recover iso Array[Worker tag] end
-//       let x = i % grid_size
-//       let y = (i / grid_size) % grid_size
-//       let z = i / (grid_size * grid_size)
-
-//       if x > 0 then try neighbors.push(_workers(i - 1)?) end end
-//       if x < (grid_size - 1) then try neighbors.push(_workers(i + 1)?) end end
-//       if y > 0 then try neighbors.push(_workers(i - grid_size)?) end end
-//       if y < (grid_size - 1) then try neighbors.push(_workers(i + grid_size)?) end end
-//       if z > 0 then try neighbors.push(_workers(i - (grid_size * grid_size))?) end end
-//       if z < (grid_size - 1) then try neighbors.push(_workers(i + (grid_size * grid_size))?) end end
-
-//       // Add a random neighbor from the list of all actors
-//       let random_neighbor = rand.int(_workers.size().u64()).usize()
-//       if random_neighbor != i then try neighbors.push(_workers(random_neighbor)?) end end
-
-//       try _workers(i)?.set_neighbors(consume neighbors) end
-//     end
