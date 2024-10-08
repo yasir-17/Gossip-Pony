@@ -11,11 +11,8 @@ actor Worker
   var neighbors: Array[Worker tag] = Array[Worker tag]
   let algorithm : String
   
-
-
   /* Gossip Fields */
   var rumor_count: USize = 0
-
 
   /*Push Sum Fields */
   var terminate: Bool = false
@@ -70,14 +67,15 @@ actor Worker
 
           if delta_ratio.abs() < pushsum_threshold then
             delta_count = delta_count + 1
+            if delta_count == 3 then
+                converged = true
+                main.node_finished(this.id)
+            else
+                propagate()
+            end
           else
             delta_count = 0
             propagate()
-          end
-
-          if delta_count == 3 then
-            converged = true
-            main.node_finished(this.id)
           end
         end
       end
@@ -85,10 +83,10 @@ actor Worker
 
   be propagate() =>
     if neighbors.size() > 0 then
-        let rand = Rand(Time.nanos().u64())
+        let rand1 = Rand(Time.nanos().u64())
         if algorithm == "pushsum" then
             try
-            let neighbor_index = rand.int(neighbors.size().u64()).usize()
+            let neighbor_index = rand1.int(neighbors.size().u64()).usize()
             let sum:F64 = s/2
             let weight:F64 = w/2
             s = sum
@@ -97,12 +95,13 @@ actor Worker
             end
         end
         if algorithm == "gossip" then
-            let neighbor_index = rand.int(neighbors.size().u64()).usize()
+            let rand2 = Rand(Time.nanos().u64())
+            let neighbor_index = rand2.int(neighbors.size().u64()).usize()
+            _env.out.print(neighbor_index.string())
             try 
                 neighbors(neighbor_index)?.receive(s, w)
-                neighbors.remove(neighbor_index, 1)
             end
-                this.receive(s, w)
+                // this.receive(s, w)
         end
       end
 
@@ -146,8 +145,11 @@ actor Main
     _start_time = Time.nanos()
     start()
 
-//   be terminate_nodes():
-
+  be terminate_nodes() =>
+    for i in Range[USize](0, _workers.size()) do 
+        try _workers(i)?.terminated() end 
+    end
+    
   be node_finished(id: USize) =>
     converged_nodes = converged_nodes + 1
     _env.out.print(converged_nodes.string())
@@ -155,7 +157,7 @@ actor Main
         let end_time = Time.nanos()
         let duration = end_time - _start_time
         _env.out.print("All nodes finished. Total time: " + (duration.f64() / 1e9).string() + " seconds")
-        // terminate_nodes()
+        terminate_nodes()
     end
 
   fun ref start() =>
