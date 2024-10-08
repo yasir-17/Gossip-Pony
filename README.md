@@ -1,8 +1,8 @@
 # Distributed Systems Project: Gossip and Push-Sum Protocols
 
 ### Team Members
-- **Sivaramakrishnan** - UFID: 15400XXX
-- **Yasir** - UFID: 
+- **Sivaramakrishnan** 
+- **Yasir** 
 
 ## Project Overview
 This project implements two popular distributed algorithms, **Gossip** and **Push-Sum**, to simulate message propagation and average consensus respectively in various network topologies. The following topologies were used:
@@ -21,10 +21,10 @@ We successfully ran the algorithms for networks as large as 1000 nodes for each 
 
 | Algorithm | Topology | Number of Nodes |
 |-----------|----------|-----------------|
-| Gossip    | Line     | 1000            |
-| Gossip    | Full     | 1000            |
-| Gossip    | 3D Grid  | 1000            |
-| Gossip    | Imp3D    | 1000            |
+| Gossip    | Line     | 2000            |
+| Gossip    | Full     | 4000            |
+| Gossip    | 3D Grid  | 3500            |
+| Gossip    | Imp3D    | 3500            |
 | Push-Sum  | Line     | 1000            |
 | Push-Sum  | Full     | 1000            |
 | Push-Sum  | 3D Grid  | 1000            |
